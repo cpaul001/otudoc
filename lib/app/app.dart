@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../features/auth/auth_service.dart';
 import '../features/auth/signup_screen.dart';
-import '../features/home/home_screen.dart';
+import '../features/courses/courses_screen.dart';
 import 'theme.dart';
 
 class OtuDocApp extends StatelessWidget {
@@ -25,6 +25,8 @@ class OtuDocApp extends StatelessWidget {
 /// Firebase delivers its first event only after a saved login has been
 /// restored, so we show a spinner until then instead of flashing the signup
 /// screen at someone who is already signed in.
+/// 
+
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 
@@ -38,7 +40,8 @@ class _AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return snapshot.hasData ? const HomeScreen() : const SignupScreen();
+        // route signed-in users straight to the Courses Hub & Resources
+        return snapshot.hasData ? const CoursesScreen() : const SignupScreen();
       },
     );
   }
