@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "155711851236",
+    "project_id": "otudocs-f6b57",
+    "storage_bucket": "otudocs-f6b57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155711851236:android:2e95cbeb202b72ff77faf1",
+        "android_client_info": {
+          "package_name": "com.example.otudoc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAADyNvOpwJiuQcBImLV_3u-CURZCGKlyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
