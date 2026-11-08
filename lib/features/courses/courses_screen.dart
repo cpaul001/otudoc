@@ -1,6 +1,8 @@
+
 import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
+import '../discussion/discussion_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -255,6 +257,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   late final List<Resource> _resources;
   String _query = '';
   ResourceType? _typeFilter;
+  bool _showDiscussion = false;
 
   @override
   void initState() {
@@ -428,6 +431,28 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Resources')),
+                ButtonSegment(value: true, label: Text('Discussion')),
+              ],
+              selected: {_showDiscussion},
+              onSelectionChanged: (set) {
+                FocusScope.of(context).unfocus();
+                setState(() => _showDiscussion = set.first);
+              },
+            ),
+          ),
+          if (_showDiscussion)
+            Expanded(
+              child: DiscussionView(
+                courseCode: widget.courseCode,
+                userEmail: widget.userEmail,
+              ),
+            )
+          else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
@@ -492,6 +517,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
               ),
             ),
           ),
+          ],
         ],
       ),
     );
