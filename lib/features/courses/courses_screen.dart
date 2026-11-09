@@ -79,9 +79,8 @@ const List<String> kSemesters = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Courses Screen (Hub matching screenshot)
+// Courses Screen
 // ─────────────────────────────────────────────────────────────────────────────
-
 class CoursesScreen extends StatefulWidget {
   const CoursesScreen({super.key});
 
@@ -109,7 +108,28 @@ class _CoursesScreenState extends State<CoursesScreen> {
       return matchesFilter && matchesQuery;
     }).toList();
   }
+  void _changeMembership(Course course, bool join) {
+    final previousValue = course.isJoined;
+    setState(() => course.isJoined = join);
 
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            join ? 'Joined ${course.code}' : 'Left ${course.code}',
+          ),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              if (!mounted) return;
+              setState(() => course.isJoined = previousValue);
+            },
+          ),
+        ),
+      );
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,57 +187,63 @@ class _CoursesScreenState extends State<CoursesScreen> {
             child: _filteredCourses.isEmpty
                 ? const Center(child: Text('No courses found.'))
                 : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _filteredCourses.length,
+              itemBuilder: (context, index) {
+                final course = _filteredCourses[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _filteredCourses.length,
-                    itemBuilder: (context, index) {
-                      final course = _filteredCourses[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                course.code,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(course.name, style: theme.textTheme.bodyMedium),
-                              const SizedBox(height: 12),
-                              if (course.isJoined)
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => ResourcesScreen(
-                                          courseCode: course.code,
-                                          courseName: course.name,
-                                          userEmail: currentUser?.email ?? '',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: const Text('Open course'),
-                                )
-                              else
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() => course.isJoined = true);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Joined ${course.code}')),
-                                    );
-                                  },
-                                  child: const Text('Join course'),
-                                ),
-                            ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          course.code,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      );
-                    },
+                        const SizedBox(height: 4),
+                        Text(course.name, style: theme.textTheme.bodyMedium),
+                        const SizedBox(height: 12),if (course.isJoined)
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ResourcesScreen(
+                                        courseCode: course.code,
+                                        courseName: course.name,
+                                        userEmail: currentUser?.email ?? '',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Open course'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => _changeMembership(course, false),
+                                icon: const Icon(Icons.logout),
+                                label: const Text('Leave course'),
+                              ),
+                            ],
+                          )
+                        else
+                          FilledButton.icon(
+                            onPressed: () => _changeMembership(course, true),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Join course'),
+                          ),
+                      ],
+                    ),
                   ),
+                );
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -232,6 +258,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resources Screen
