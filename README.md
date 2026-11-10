@@ -7,7 +7,7 @@
 
 
 ## Test account
->Email: test@ontariotechu.net
+Email: test@ontariotechu.net
 Password: TESTER123
 Please use this test account to sign in and evaluate the OTUDOC application.
 ## AI-Use Acknowledgement
