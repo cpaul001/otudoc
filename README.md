@@ -9,7 +9,7 @@
 ## Test account
 Email: test@ontariotechu.net
 Password: TESTER123
-####Please use this test account to sign in and evaluate the OTUDOC application.
+#### Please use this test account to sign in and evaluate the OTUDOC application.
 ## AI-Use Acknowledgement
 Helped with deciding on project structure and demo screenshots, and early UML creation
 # OTUDOC
