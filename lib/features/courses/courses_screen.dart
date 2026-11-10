@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
@@ -9,11 +8,7 @@ import '../discussion/discussion_view.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Course {
-  Course({
-    required this.code,
-    required this.name,
-    this.isJoined = false,
-  });
+  Course({required this.code, required this.name, this.isJoined = false});
 
   final String code;
   final String name;
@@ -68,14 +63,28 @@ class Resource {
 
 String formatDate(DateTime date) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
 const List<String> kSemesters = [
-  'Fall 2026', 'Summer 2026', 'Winter 2026', 'Fall 2025', 'Winter 2025',
+  'Fall 2026',
+  'Summer 2026',
+  'Winter 2026',
+  'Fall 2025',
+  'Winter 2025',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,8 +101,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
   final List<Course> _courses = [
     Course(code: 'CSCI 3101U', name: 'Mobile Devices', isJoined: true),
     Course(code: 'CSCI 2010U', name: 'Data Structures', isJoined: false),
-    Course(code: 'INFR 2820U', name: 'Algorithms & Data Structures', isJoined: true),
-    Course(code: 'CSCI 3070U', name: 'Analysis & Design of Algorithms', isJoined: false),
+    Course(
+      code: 'INFR 2820U',
+      name: 'Algorithms & Data Structures',
+      isJoined: true,
+    ),
+    Course(
+      code: 'CSCI 3070U',
+      name: 'Analysis & Design of Algorithms',
+      isJoined: false,
+    ),
   ];
 
   String _searchQuery = '';
@@ -102,12 +119,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
   List<Course> get _filteredCourses {
     return _courses.where((c) {
       final matchesFilter = !_showJoinedOnly || c.isJoined;
-      final matchesQuery = _searchQuery.isEmpty ||
+      final matchesQuery =
+          _searchQuery.isEmpty ||
           c.code.toLowerCase().contains(_searchQuery) ||
           c.name.toLowerCase().contains(_searchQuery);
       return matchesFilter && matchesQuery;
     }).toList();
   }
+
   void _changeMembership(Course course, bool join) {
     final previousValue = course.isJoined;
     setState(() => course.isJoined = join);
@@ -116,9 +135,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
       ..removeCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(
-            join ? 'Joined ${course.code}' : 'Left ${course.code}',
-          ),
+          content: Text(join ? 'Joined ${course.code}' : 'Left ${course.code}'),
           duration: const Duration(seconds: 6),
           action: SnackBarAction(
             label: 'Undo',
@@ -130,6 +147,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         ),
       );
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -161,7 +179,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     prefixIcon: Icon(Icons.search),
                     hintText: 'Code or course name',
                   ),
-                  onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                  onChanged: (val) =>
+                      setState(() => _searchQuery = val.trim().toLowerCase()),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -187,63 +206,70 @@ class _CoursesScreenState extends State<CoursesScreen> {
             child: _filteredCourses.isEmpty
                 ? const Center(child: Text('No courses found.'))
                 : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _filteredCourses.length,
-              itemBuilder: (context, index) {
-                final course = _filteredCourses[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          course.code,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    itemCount: _filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = _filteredCourses[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                course.code,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                course.name,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              if (course.isJoined)
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 8,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => ResourcesScreen(
+                                              courseCode: course.code,
+                                              courseName: course.name,
+                                              userEmail:
+                                                  currentUser?.email ?? '',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Open course'),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          _changeMembership(course, false),
+                                      icon: const Icon(Icons.logout),
+                                      label: const Text('Leave course'),
+                                    ),
+                                  ],
+                                )
+                              else
+                                FilledButton.icon(
+                                  onPressed: () =>
+                                      _changeMembership(course, true),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Join course'),
+                                ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(course.name, style: theme.textTheme.bodyMedium),
-                        const SizedBox(height: 12),if (course.isJoined)
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 8,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ResourcesScreen(
-                                        courseCode: course.code,
-                                        courseName: course.name,
-                                        userEmail: currentUser?.email ?? '',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: const Text('Open course'),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: () => _changeMembership(course, false),
-                                icon: const Icon(Icons.logout),
-                                label: const Text('Leave course'),
-                              ),
-                            ],
-                          )
-                        else
-                          FilledButton.icon(
-                            onPressed: () => _changeMembership(course, true),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Join course'),
-                          ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -258,7 +284,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resources Screen
@@ -282,9 +307,16 @@ class ResourcesScreen extends StatefulWidget {
 
 class _ResourcesScreenState extends State<ResourcesScreen> {
   late final List<Resource> _resources;
+  final _searchController = TextEditingController();
   String _query = '';
   ResourceType? _typeFilter;
   bool _showDiscussion = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -306,7 +338,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
         semester: 'Fall 2026',
         materialDate: DateTime(2026, 10, 1),
         pageCount: 6,
-        uploaderEmail: widget.userEmail, // Set to current user so it appears as yours
+        uploaderEmail:
+            widget.userEmail, // Set to current user so it appears as yours
         currentUserId: widget.userEmail,
       ),
     ];
@@ -315,23 +348,26 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   List<Resource> get _visibleResources {
     return _resources.where((r) {
       final matchesType = _typeFilter == null || r.type == _typeFilter;
-      final matchesQuery = _query.isEmpty || r.title.toLowerCase().contains(_query);
+      final matchesQuery =
+          _query.isEmpty || r.title.toLowerCase().contains(_query);
       return matchesType && matchesQuery;
-    }).toList()
-      ..sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+    }).toList()..sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
   }
 
   void _showSnackBar(String message, {SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(message),
-        action: action,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: action,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   Future<void> _openUploadForm() async {
+    FocusScope.of(context).unfocus();
     final newResource = await Navigator.of(context).push<Resource>(
       MaterialPageRoute(
         builder: (_) => UploadResourceScreen(
@@ -342,7 +378,12 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     );
     if (newResource == null || !mounted) return;
 
-    setState(() => _resources.add(newResource));
+    setState(() {
+      _resources.add(newResource);
+      _searchController.clear();
+      _query = '';
+      _typeFilter = null;
+    });
     _showSnackBar('"${newResource.title}" uploaded');
   }
 
@@ -351,7 +392,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete resource?'),
-        content: Text('"${resource.title}" will be removed from ${widget.courseCode}.'),
+        content: Text(
+          '"${resource.title}" will be removed from ${widget.courseCode}.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -371,7 +414,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
       'Resource deleted',
       action: SnackBarAction(
         label: 'UNDO',
-        onPressed: () => setState(() => _resources.add(resource)),
+        onPressed: () {
+          if (mounted) setState(() => _resources.add(resource));
+        },
       ),
     );
   }
@@ -380,13 +425,18 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => Padding(
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(resource.title, style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              resource.title,
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 4),
             Text(resource.summary),
             if (resource.description.isNotEmpty) ...[
@@ -395,7 +445,10 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
             ],
             const SizedBox(height: 12),
             _DetailRow(label: 'Semester', value: resource.semester),
-            _DetailRow(label: 'Material date', value: formatDate(resource.materialDate)),
+            _DetailRow(
+              label: 'Material date',
+              value: formatDate(resource.materialDate),
+            ),
             _DetailRow(label: 'Uploaded by', value: resource.uploaderEmail),
             const SizedBox(height: 16),
             Row(
@@ -432,9 +485,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     final resources = _visibleResources;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Course hub'),
-      ),
+      appBar: AppBar(title: const Text('Course hub')),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -445,7 +496,9 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
               children: [
                 Text(
                   widget.courseCode,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   '${widget.courseName} | Joined',
@@ -478,72 +531,93 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
               ),
             )
           else ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search resources',
-              ),
-              onChanged: (text) => setState(() => _query = text.trim().toLowerCase()),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: DropdownButtonFormField<ResourceType?>(
-              initialValue: _typeFilter,
-              decoration: const InputDecoration(
-                labelText: 'Type',
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All resources')),
-                for (final type in ResourceType.values)
-                  DropdownMenuItem(value: type, child: Text(type.label)),
-              ],
-              onChanged: (value) => setState(() => _typeFilter = value),
-            ),
-          ),
-          Expanded(
-            child: resources.isEmpty
-                ? _EmptyView(
-                    message: _query.isNotEmpty || _typeFilter != null
-                        ? 'No resources match your search.'
-                        : 'No resources yet.\nBe the first to upload one!',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    itemCount: resources.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final resource = resources[index];
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Icon(resource.type.icon),
-                          ),
-                          title: Text(resource.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(resource.summary),
-                          trailing: resource.isMine
-                              ? const Chip(label: Text('Yours'))
-                              : const Icon(Icons.chevron_right),
-                          onTap: () => _showDetails(resource),
-                          onLongPress: resource.isMine ? () => _confirmDelete(resource) : null,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search resources',
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          icon: const Icon(Icons.close),
+                          onPressed: () => setState(() {
+                            _searchController.clear();
+                            _query = '';
+                          }),
                         ),
-                      );
-                    },
-                  ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: ElevatedButton.icon(
-                onPressed: _openUploadForm,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Upload resource'),
+                ),
+                onChanged: (text) =>
+                    setState(() => _query = text.trim().toLowerCase()),
               ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: DropdownButtonFormField<ResourceType?>(
+                key: ValueKey(_typeFilter),
+                initialValue: _typeFilter,
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('All resources'),
+                  ),
+                  for (final type in ResourceType.values)
+                    DropdownMenuItem(value: type, child: Text(type.label)),
+                ],
+                onChanged: (value) => setState(() => _typeFilter = value),
+              ),
+            ),
+            Expanded(
+              child: resources.isEmpty
+                  ? _EmptyView(
+                      message: _query.isNotEmpty || _typeFilter != null
+                          ? 'No resources match your search.'
+                          : 'No resources yet.\nBe the first to upload one!',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      itemCount: resources.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final resource = resources[index];
+                        return Card(
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              child: Icon(resource.type.icon),
+                            ),
+                            title: Text(
+                              resource.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(resource.summary),
+                            trailing: resource.isMine
+                                ? const Chip(label: Text('Yours'))
+                                : const Icon(Icons.chevron_right),
+                            onTap: () => _showDetails(resource),
+                            onLongPress: resource.isMine
+                                ? () => _confirmDelete(resource)
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: ElevatedButton.icon(
+                  onPressed: _openUploadForm,
+                  icon: const Icon(Icons.upload_file),
+                  label: const Text('Upload resource'),
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -564,7 +638,12 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           Expanded(child: Text(value)),
         ],
@@ -588,7 +667,11 @@ class _EmptyView extends StatelessWidget {
           children: [
             Icon(Icons.folder_open, size: 48, color: color),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: color)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: color),
+            ),
           ],
         ),
       ),
@@ -624,6 +707,7 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
   String _semester = kSemesters.first;
   DateTime? _materialDate;
   bool _saving = false;
+  bool _confirmingExit = false;
 
   @override
   void dispose() {
@@ -637,7 +721,33 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
       _titleController.text.isNotEmpty ||
       _pagesController.text.isNotEmpty ||
       _descriptionController.text.isNotEmpty ||
-      _materialDate != null;
+      _materialDate != null ||
+      _type != ResourceType.notes ||
+      _semester != kSemesters.first;
+
+  Future<void> _confirmExit() async {
+    if (_saving || _confirmingExit) return;
+    _confirmingExit = true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard upload?'),
+        content: const Text('Your unsaved resource details will be lost.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    _confirmingExit = false;
+    if (discard == true && mounted) Navigator.of(context).pop();
+  }
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -647,10 +757,12 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
       firstDate: DateTime(now.year - 5),
       lastDate: now,
     );
-    if (picked != null) setState(() => _materialDate = picked);
+    if (picked != null && mounted) setState(() => _materialDate = picked);
   }
 
   Future<void> _submit() async {
+    if (_saving) return;
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fix the highlighted fields')),
@@ -678,23 +790,33 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return PopScope<Resource>(
       canPop: !_hasChanges && !_saving,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _confirmExit();
+      },
       child: Scaffold(
         appBar: AppBar(title: const Text('Upload resource')),
         body: Form(
           key: _formKey,
           onChanged: () => setState(() {}),
           child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Sharing to ${widget.courseCode}', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Sharing to ${widget.courseCode}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
                 enabled: !_saving,
                 maxLength: 80,
-                decoration: const InputDecoration(labelText: 'Title', hintText: 'e.g. Dart study notes'),
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  hintText: 'e.g. Dart study notes',
+                ),
                 validator: (val) {
                   final text = val?.trim() ?? '';
                   if (text.isEmpty) return 'Enter a title';
@@ -720,16 +842,20 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
                   for (final s in kSemesters)
                     DropdownMenuItem(value: s, child: Text(s)),
                 ],
-                onChanged: _saving ? null : (v) => setState(() => _semester = v!),
+                onChanged: _saving
+                    ? null
+                    : (v) => setState(() => _semester = v!),
               ),
               const SizedBox(height: 16),
               FormField<DateTime>(
-                validator: (_) => _materialDate == null ? 'Choose a date' : null,
+                validator: (_) =>
+                    _materialDate == null ? 'Choose a date' : null,
                 builder: (field) => InkWell(
                   onTap: _saving
                       ? null
                       : () async {
                           await _pickDate();
+                          if (!mounted || !field.mounted) return;
                           field.didChange(_materialDate);
                         },
                   child: InputDecorator(
@@ -738,7 +864,11 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
                       suffixIcon: const Icon(Icons.calendar_today),
                       errorText: field.errorText,
                     ),
-                    child: Text(_materialDate == null ? 'Tap to choose' : formatDate(_materialDate!)),
+                    child: Text(
+                      _materialDate == null
+                          ? 'Tap to choose'
+                          : formatDate(_materialDate!),
+                    ),
                   ),
                 ),
               ),
@@ -747,7 +877,17 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
                 controller: _pagesController,
                 enabled: !_saving,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Number of pages (optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Number of pages (optional)',
+                ),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final pages = int.tryParse(text);
+                  return pages == null || pages <= 0
+                      ? 'Enter a whole number greater than zero'
+                      : null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -755,7 +895,9 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
                 enabled: !_saving,
                 maxLines: 3,
                 maxLength: 300,
-                decoration: const InputDecoration(labelText: 'Description (optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
