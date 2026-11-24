@@ -5,9 +5,11 @@ import '../features/auth/auth_service.dart';
 import '../features/auth/signup_screen.dart';
 import '../features/courses/courses_screen.dart';
 import 'theme.dart';
+import '../features/settings/settings_screen.dart';
 
 class OtuDocApp extends StatelessWidget {
-  const OtuDocApp({super.key});
+  const OtuDocApp({super.key, required this.preferences});
+  final ReadingPreferences preferences;
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +17,15 @@ class OtuDocApp extends StatelessWidget {
       title: 'OTUDOC',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      builder: (context, child) => ReadingScope(
+        preferences: preferences,
+        child: Builder(
+          builder: (context) => MediaQuery.withClampedTextScaling(
+            minScaleFactor: ReadingScope.of(context).value.minimumScale,
+            child: child!,
+          ),
+        ),
+      ),
       home: const _AuthGate(),
     );
   }
@@ -25,7 +36,7 @@ class OtuDocApp extends StatelessWidget {
 /// Firebase delivers its first event only after a saved login has been
 /// restored, so we show a spinner until then instead of flashing the signup
 /// screen at someone who is already signed in.
-/// 
+///
 
 class _AuthGate extends StatelessWidget {
   const _AuthGate();

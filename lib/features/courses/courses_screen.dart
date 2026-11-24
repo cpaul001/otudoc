@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
 import '../discussion/discussion_view.dart';
+import '../settings/settings_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -154,6 +155,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final currentUser = AuthService().currentUser;
 
     return Scaffold(
+      drawer: const CourseDrawer(),
       appBar: AppBar(
         title: const Text('Courses'),
         actions: [
