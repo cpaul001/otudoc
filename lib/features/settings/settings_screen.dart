@@ -11,22 +11,33 @@ enum ReadingSize {
   final double minimumScale;
 }
 
-class ReadingPreferences extends ValueNotifier<ReadingSize> {
-  ReadingPreferences() : super(ReadingSize.device);
+class ReadingPreferences extends ChangeNotifier {
+  ReadingSize _size = ReadingSize.device;
+  ReadingSize get value => _size;
+  bool _dark = false;
+  bool get dark => _dark;
   static const _key = 'reading_size';
   final _store = SharedPreferencesAsync();
 
   Future<void> restore() async {
     final saved = await _store.getString(_key);
-    value = ReadingSize.values.firstWhere(
+    _dark = await _store.getBool('dark_mode') ?? false;
+    _size = ReadingSize.values.firstWhere(
       (size) => size.name == saved,
       orElse: () => ReadingSize.device,
     );
   }
 
+  Future<void> saveDark(bool enabled) async {
+    await _store.setBool('dark_mode', enabled);
+    _dark = enabled;
+    notifyListeners();
+  }
+
   Future<void> save(ReadingSize size) async {
     await _store.setString(_key, size.name);
-    value = size;
+    _size = size;
+    notifyListeners();
   }
 }
 
@@ -87,17 +98,16 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _saving = false;
-  Future<void> _select(ReadingSize? size) async {
-    if (_saving || size == null) return;
-    final prefs = ReadingScope.of(context);
+  Future<void> _save(Future<void> Function() write) async {
+    if (_saving) return;
     setState(() => _saving = true);
     try {
-      await prefs.save(size);
+      await write();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not save text size. Please try again.'),
+            content: Text('Could not save this setting. Please try again.'),
           ),
         );
       }
@@ -113,12 +123,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Dark mode'),
+            value: ReadingScope.of(context).dark,
+            onChanged: _saving
+                ? null
+                : (enabled) =>
+                      _save(() => ReadingScope.of(context).saveDark(enabled)),
+          ),
+          const Divider(),
           Text('Text size', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           const Text('Choose a minimum text size for all screens.'),
           RadioGroup<ReadingSize>(
             groupValue: ReadingScope.of(context).value,
-            onChanged: _select,
+            onChanged: (size) {
+              if (size != null) {
+                _save(() => ReadingScope.of(context).save(size));
+              }
+            },
             child: Column(
               children: [
                 for (final size in ReadingSize.values)
