@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
 import '../discussion/discussion_view.dart';
+<<<<<<< HEAD
 import 'resource_store.dart';
+=======
+import '../settings/settings_screen.dart';
+>>>>>>> 7d53bbc92f292531b9fe4c962e81bc33590be185
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -143,7 +147,8 @@ const List<String> kSemesters = [
 // Courses Screen
 // ─────────────────────────────────────────────────────────────────────────────
 class CoursesScreen extends StatefulWidget {
-  const CoursesScreen({super.key});
+  const CoursesScreen({super.key, required this.userEmail});
+  final String userEmail;
 
   @override
   State<CoursesScreen> createState() => _CoursesScreenState();
@@ -203,9 +208,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final currentUser = AuthService().currentUser;
 
     return Scaffold(
+      drawer: const CourseDrawer(),
       appBar: AppBar(
         title: const Text('Courses'),
         actions: [
@@ -293,8 +298,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                             builder: (_) => ResourcesScreen(
                                               courseCode: course.code,
                                               courseName: course.name,
-                                              userEmail:
-                                                  currentUser?.email ?? '',
+                                              userEmail: widget.userEmail,
                                             ),
                                           ),
                                         );
@@ -620,6 +624,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: SegmentedButton<bool>(
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: false, label: Text('Resources')),
                 ButtonSegment(value: true, label: Text('Discussion')),
@@ -664,6 +669,7 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: DropdownButtonFormField<ResourceType?>(
+                isExpanded: true,
                 key: ValueKey(_typeFilter),
                 initialValue: _typeFilter,
                 decoration: const InputDecoration(labelText: 'Type'),

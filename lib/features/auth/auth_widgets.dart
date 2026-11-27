@@ -20,7 +20,9 @@ class AuthPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: theme.brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
       child: Scaffold(
         body: SafeArea(
           child: LayoutBuilder(
