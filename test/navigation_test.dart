@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:otudoc/app/theme.dart';
 import 'package:otudoc/features/courses/courses_screen.dart';
+import 'package:otudoc/features/courses/resource_store.dart';
+
+// Fake file picker: pretends the user chose a small PDF, so tests never
+// open the real Android file chooser (it doesn't exist in widget tests).
+Future<PickedPdf?> fakePickPdf() async => const PickedPdf(
+      path: '/fake/video_demo_notes.pdf',
+      name: 'video_demo_notes.pdf',
+      sizeBytes: 2048,
+    );
 
 Future<void> openHub(WidgetTester tester) async {
   tester.view.physicalSize = const Size(430, 1000);
@@ -11,13 +20,18 @@ Future<void> openHub(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: buildAppTheme(),
-      home: const ResourcesScreen(
+      home: ResourcesScreen(
         courseCode: 'CSCI 3101U',
         courseName: 'Mobile Devices',
         userEmail: 'demo@ontariotechu.net',
+        // In-memory store + fake picker keep tests off the real plugins.
+        store: MemoryResourceStore(),
+        pickPdf: fakePickPdf,
       ),
     ),
   );
+  // Let the store finish loading the sample resources.
+  await tester.pumpAndSettle();
 }
 
 Future<void> openUpload(WidgetTester tester) async {
@@ -77,6 +91,10 @@ void main() {
       find.byType(TextFormField).first,
       'Video demo notes',
     );
+    // Uploading now requires a PDF; the fake picker supplies one.
+    await tester.tap(find.text('Choose PDF'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('video_demo_notes.pdf'), findsOneWidget);
     await tester.tap(find.text('Tap to choose'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
@@ -103,6 +121,23 @@ void main() {
     expect(find.byType(UploadResourceScreen), findsNothing);
     expect(find.text('Video demo notes'), findsOneWidget);
     expect(find.text('Discard upload?'), findsNothing);
+  });
+
+  testWidgets('Upload without a PDF shows an error and stays on the form', (
+    tester,
+  ) async {
+    await openHub(tester);
+    await openUpload(tester);
+    await tester.enterText(find.byType(TextFormField).first, 'No file notes');
+    await tester.tap(find.text('Tap to choose'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Upload'));
+    await tester.tap(find.text('Upload'));
+    await tester.pumpAndSettle();
+    expect(find.text('Choose a PDF to upload'), findsOneWidget);
+    expect(find.byType(UploadResourceScreen), findsOneWidget);
   });
 
   testWidgets('Resource search stays visible across tabs and can be cleared', (

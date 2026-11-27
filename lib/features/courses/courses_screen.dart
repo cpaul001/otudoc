@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_service.dart';
 import '../discussion/discussion_view.dart';
+import 'resource_store.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -30,6 +31,8 @@ enum ResourceType {
 
 class Resource {
   Resource({
+    this.id,
+    required this.courseCode,
     required this.title,
     required this.type,
     required this.semester,
@@ -38,8 +41,17 @@ class Resource {
     required this.currentUserId,
     this.pageCount,
     this.description = '',
-  }) : uploadedAt = DateTime.now();
+    DateTime? uploadedAt,
+    this.filePath,
+    this.fileName,
+    this.fileSizeBytes,
+  }) : uploadedAt = uploadedAt ?? DateTime.now(); // new uploads default to "now"
 
+  /// Set by the store once the resource is saved (null on a fresh draft).
+  final int? id;
+
+  /// Course this resource belongs to, e.g. "CSCI 3101U".
+  final String courseCode;
   final String title;
   final ResourceType type;
   final String semester;
@@ -50,14 +62,54 @@ class Resource {
   final String currentUserId;
   final DateTime uploadedAt;
 
+  /// Where the PDF is saved on the phone (null for seeded sample resources).
+  final String? filePath;
+
+  /// Original name of the uploaded file, e.g. "week3_notes.pdf".
+  final String? fileName;
+
+  /// Size of the uploaded file in bytes.
+  final int? fileSizeBytes;
+
   bool get isMine => uploaderEmail.toLowerCase() == currentUserId.toLowerCase();
+
+  /// True when a real PDF is attached (false for sample data).
+  bool get hasFile => filePath != null;
 
   String get summary {
     final parts = [type.label, 'PDF'];
     if (pageCount != null) {
       parts.add('$pageCount ${pageCount == 1 ? 'page' : 'pages'}');
     }
+    // Show the file size when we know it.
+    if (fileSizeBytes != null) parts.add(formatFileSize(fileSizeBytes!));
     return parts.join(' | ');
+  }
+
+  /// Returns a copy with the given fields replaced. The store uses this to
+  /// attach the id and saved file path to a draft from the upload form.
+  Resource copyWith({
+    int? id,
+    String? filePath,
+    String? fileName,
+    int? fileSizeBytes,
+  }) {
+    return Resource(
+      id: id ?? this.id,
+      courseCode: courseCode,
+      title: title,
+      type: type,
+      semester: semester,
+      materialDate: materialDate,
+      uploaderEmail: uploaderEmail,
+      currentUserId: currentUserId,
+      pageCount: pageCount,
+      description: description,
+      uploadedAt: uploadedAt,
+      filePath: filePath ?? this.filePath,
+      fileName: fileName ?? this.fileName,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+    );
   }
 }
 
@@ -295,22 +347,39 @@ class ResourcesScreen extends StatefulWidget {
     required this.courseCode,
     required this.courseName,
     required this.userEmail,
+    this.store,
+    this.pickPdf,
   });
 
   final String courseCode;
   final String courseName;
   final String userEmail;
 
+  /// Where resources are saved. Defaults to SQLite on Android; tests pass a
+  /// MemoryResourceStore.
+  final ResourceStore? store;
+
+  /// How the upload form chooses a PDF. Defaults to the real file picker;
+  /// tests pass a fake.
+  final PdfPicker? pickPdf;
+
   @override
   State<ResourcesScreen> createState() => _ResourcesScreenState();
 }
 
 class _ResourcesScreenState extends State<ResourcesScreen> {
-  late final List<Resource> _resources;
+  // Filled once the store finishes loading.
+  final List<Resource> _resources = [];
+  bool _loading = true;
+  String? _loadError;
+
   final _searchController = TextEditingController();
   String _query = '';
   ResourceType? _typeFilter;
   bool _showDiscussion = false;
+
+  // The store to use: the one passed in, or the app-wide default.
+  ResourceStore get _store => widget.store ?? ResourceStore.instance;
 
   @override
   void dispose() {
@@ -321,28 +390,37 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
   @override
   void initState() {
     super.initState();
-    _resources = [
-      Resource(
-        title: 'Dart study notes',
-        type: ResourceType.notes,
-        semester: 'Fall 2026',
-        materialDate: DateTime(2026, 9, 15),
-        pageCount: 4,
-        uploaderEmail: 'sample.student@ontariotechu.net',
-        currentUserId: widget.userEmail,
-        description: 'Variables, null safety, lists and loops.',
-      ),
-      Resource(
-        title: 'Practice questions – widgets',
-        type: ResourceType.practice,
-        semester: 'Fall 2026',
-        materialDate: DateTime(2026, 10, 1),
-        pageCount: 6,
-        uploaderEmail:
-            widget.userEmail, // Set to current user so it appears as yours
-        currentUserId: widget.userEmail,
-      ),
-    ];
+    _loadResources();
+  }
+
+  /// Reads this course's resources from the store.
+  Future<void> _loadResources() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final loaded = await _store.loadFor(widget.courseCode, widget.userEmail);
+      if (!mounted) return;
+      setState(() {
+        _resources
+          ..clear()
+          ..addAll(loaded);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'Could not load resources.';
+      });
+    }
+  }
+
+  /// Opens the resource's PDF, or explains why it can't be opened.
+  Future<void> _openFile(Resource resource) async {
+    final error = await openResourceFile(resource);
+    if (error != null && mounted) _showSnackBar(error);
   }
 
   List<Resource> get _visibleResources {
@@ -373,6 +451,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
         builder: (_) => UploadResourceScreen(
           courseCode: widget.courseCode,
           userEmail: widget.userEmail,
+          store: _store,
+          pickPdf: widget.pickPdf ?? pickPdfFromDevice,
         ),
       ),
     );
@@ -409,16 +489,39 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    // Remove from the screen right away, then from the store.
     setState(() => _resources.remove(resource));
-    _showSnackBar(
-      'Resource deleted',
-      action: SnackBarAction(
-        label: 'UNDO',
-        onPressed: () {
-          if (mounted) setState(() => _resources.add(resource));
-        },
+    try {
+      await _store.remove(resource);
+    } catch (_) {
+      // Store failed: put it back so the screen matches what's saved.
+      if (!mounted) return;
+      setState(() => _resources.add(resource));
+      _showSnackBar('Could not delete "${resource.title}". Try again.');
+      return;
+    }
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    final snackBar = messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Resource deleted'),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () async {
+            // Undo: put the record back in the store and on screen.
+            await _store.restore(resource);
+            if (mounted) setState(() => _resources.add(resource));
+          },
+        ),
       ),
     );
+    // The PDF is only deleted once the snackbar closes without "Undo",
+    // otherwise Undo would bring back a record with no file.
+    snackBar.closed.then((reason) {
+      if (reason != SnackBarClosedReason.action) _store.deleteFile(resource);
+    });
   }
 
   void _showDetails(Resource resource) {
@@ -450,6 +553,10 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
               value: formatDate(resource.materialDate),
             ),
             _DetailRow(label: 'Uploaded by', value: resource.uploaderEmail),
+            _DetailRow(label: 'Uploaded on', value: formatDate(resource.uploadedAt)),
+            // File info only exists for real uploads, not sample data.
+            if (resource.fileName != null)
+              _DetailRow(label: 'File', value: resource.fileName!),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -466,7 +573,8 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.of(sheetContext).pop();
-                    _showSnackBar('Document preview coming soon');
+                    // Opens the PDF in the phone's PDF viewer.
+                    _openFile(resource);
                   },
                   icon: const Icon(Icons.open_in_new),
                   label: const Text('Open'),
@@ -571,7 +679,24 @@ class _ResourcesScreenState extends State<ResourcesScreen> {
               ),
             ),
             Expanded(
-              child: resources.isEmpty
+              // Spinner while loading, retry on error, otherwise the list.
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _loadError != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_loadError!),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: _loadResources,
+                            child: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : resources.isEmpty
                   ? _EmptyView(
                       message: _query.isNotEmpty || _typeFilter != null
                           ? 'No resources match your search.'
@@ -688,10 +813,18 @@ class UploadResourceScreen extends StatefulWidget {
     super.key,
     required this.courseCode,
     required this.userEmail,
+    required this.store,
+    required this.pickPdf,
   });
 
   final String courseCode;
   final String userEmail;
+
+  /// Saves the resource and its PDF when the form is submitted.
+  final ResourceStore store;
+
+  /// Opens the file chooser (a fake one in tests).
+  final PdfPicker pickPdf;
 
   @override
   State<UploadResourceScreen> createState() => _UploadResourceScreenState();
@@ -706,6 +839,7 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
   ResourceType _type = ResourceType.notes;
   String _semester = kSemesters.first;
   DateTime? _materialDate;
+  PickedPdf? _file; // the PDF the user chose, null until they pick one
   bool _saving = false;
   bool _confirmingExit = false;
 
@@ -722,6 +856,7 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
       _pagesController.text.isNotEmpty ||
       _descriptionController.text.isNotEmpty ||
       _materialDate != null ||
+      _file != null || // picking a file counts as an unsaved change
       _type != ResourceType.notes ||
       _semester != kSemesters.first;
 
@@ -771,11 +906,11 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
     }
 
     setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
 
+    // Build the draft from the form fields (no id or saved path yet).
     final pagesText = _pagesController.text.trim();
-    final resource = Resource(
+    final draft = Resource(
+      courseCode: widget.courseCode,
       title: _titleController.text.trim(),
       type: _type,
       semester: _semester,
@@ -785,7 +920,67 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
       uploaderEmail: widget.userEmail,
       currentUserId: widget.userEmail,
     );
-    Navigator.of(context).pop(resource);
+
+    try {
+      // Copies the PDF into app storage and saves the record.
+      final saved = await widget.store.add(draft, _file!);
+      if (!mounted) return;
+      // Hand the saved resource back to the hub so it appears in the list.
+      Navigator.of(context).pop(saved);
+    } catch (e) {
+      // Keep the form filled in so the user can try again.
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Upload failed. Please try again.')),
+      );
+    }
+  }
+
+  /// Lets the user choose a PDF and checks it before accepting it.
+  Future<void> _choosePdf() async {
+    FocusScope.of(context).unfocus();
+    PickedPdf? result;
+    try {
+      result = await widget.pickPdf();
+    } catch (e) {
+      // e.g. the picker plugin isn't available on this platform.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the file picker.')),
+      );
+      return;
+    }
+    if (result == null || !mounted) return; // user cancelled
+    final picked = result; // non-null from here on
+
+    // Double-check the extension in case the picker let something else through.
+    if (!picked.name.toLowerCase().endsWith('.pdf')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only PDF files can be uploaded.')),
+      );
+      return;
+    }
+    if (picked.sizeBytes > kMaxUploadBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'That file is too big. The limit is '
+            '${formatFileSize(kMaxUploadBytes)}.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _file = picked;
+      // Fill in the title from the file name if the user hasn't typed one.
+      if (_titleController.text.trim().isEmpty) {
+        final name = picked.name;
+        _titleController.text = name.substring(0, name.length - 4);
+      }
+    });
   }
 
   @override
@@ -807,6 +1002,39 @@ class _UploadResourceScreenState extends State<UploadResourceScreen> {
               Text(
                 'Sharing to ${widget.courseCode}',
                 style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+              // PDF picker. Wrapped in a FormField so "Upload" shows an error
+              // under it when no file was chosen, like the other fields.
+              FormField<PickedPdf>(
+                validator: (_) => _file == null ? 'Choose a PDF to upload' : null,
+                builder: (field) => InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _saving
+                      ? null
+                      : () async {
+                          await _choosePdf();
+                          if (!mounted || !field.mounted) return;
+                          // Re-run validation so the error clears after picking.
+                          field.didChange(_file);
+                        },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'File',
+                      prefixIcon: const Icon(Icons.picture_as_pdf_outlined),
+                      suffixIcon: _file == null
+                          ? const Icon(Icons.attach_file)
+                          : const Icon(Icons.swap_horiz), // tap again to replace
+                      errorText: field.errorText,
+                    ),
+                    child: Text(
+                      _file == null
+                          ? 'Choose PDF'
+                          : '${_file!.name} (${formatFileSize(_file!.sizeBytes)})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
